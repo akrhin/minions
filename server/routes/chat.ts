@@ -127,6 +127,12 @@ async function recordCompletedAgentRun(taskId: string, context: ContextUsage | n
   if (updated && updated.status === 'in_progress') {
     const reviewed = updateTask(taskId, { status: 'in_review' });
     if (reviewed) notify({ kind: 'review', taskId: reviewed.id, title: reviewed.title });
+    // Fire auto-review in the background (non-blocking)
+    if (reviewed) {
+      import('../review.js').then(({ autoReviewTask }) => {
+        autoReviewTask(taskId).catch(() => { /* auto-review failure is non-fatal */ });
+      }).catch(() => { /* import failure is non-fatal */ });
+    }
     return reviewed;
   }
   return updated;
