@@ -5,14 +5,13 @@ import { toErrorMessage } from '../lib/format';
 
 export function OrchestratePage() {
   const navigate = useNavigate();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [goal, setGoal] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const titleRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    titleRef.current?.focus();
+    textareaRef.current?.focus();
   }, []);
 
   useEffect(() => {
@@ -24,8 +23,8 @@ export function OrchestratePage() {
   }, [navigate]);
 
   const handleSubmit = useCallback(async () => {
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle || isCreating) return;
+    const trimmed = goal.trim();
+    if (!trimmed || isCreating) return;
 
     setIsCreating(true);
     setError(null);
@@ -34,10 +33,7 @@ export function OrchestratePage() {
       const res = await fetch('/api/tasks/create-orchestrator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: trimmedTitle,
-          description: description.trim() || trimmedTitle,
-        }),
+        body: JSON.stringify({ goal: trimmed }),
       });
 
       if (!res.ok) {
@@ -51,7 +47,7 @@ export function OrchestratePage() {
       setError(toErrorMessage(err, 'Failed to start orchestrator'));
       setIsCreating(false);
     }
-  }, [title, description, isCreating, navigate]);
+  }, [goal, isCreating, navigate]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -59,6 +55,13 @@ export function OrchestratePage() {
       handleSubmit();
     }
   }, [handleSubmit]);
+
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 320) + 'px';
+  }, []);
 
   return (
     <div className="relative flex-1 flex flex-col items-center justify-center px-6 pb-24">
@@ -71,40 +74,32 @@ export function OrchestratePage() {
 
       <div className="w-full max-w-3xl">
         <div className="rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-          <input
-            ref={titleRef}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="What do you want to accomplish?"
-            disabled={isCreating}
-            className="w-full bg-transparent px-5 pt-4 pb-2 text-sm font-medium text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none border-b border-zinc-100 dark:border-zinc-700/50"
-          />
           <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            ref={textareaRef}
+            value={goal}
+            onChange={(e) => { setGoal(e.target.value); autoResize(); }}
             onKeyDown={handleKeyDown}
-            placeholder="Optional: add more context, constraints, or details..."
-            rows={5}
+            placeholder={`What do you want to accomplish?\n\nExample: "Review all pipeline-plugin audit items, fix P0 bugs, and push the changes."`}
+            rows={6}
             disabled={isCreating}
-            className="w-full resize-none bg-transparent px-5 pt-3 pb-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none leading-relaxed"
+            className="w-full resize-none bg-transparent px-5 pt-4 pb-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none leading-relaxed"
           />
           {error && (
             <div className="px-5 pb-2 text-xs text-red-500">{error}</div>
           )}
           <div className="flex items-center justify-between gap-2 px-4 pb-4">
             <p className="text-xs text-zinc-400 dark:text-zinc-500">
-              The orchestrator will decompose your goal into subtasks and manage them on the board.
+              The orchestrator will decompose your goal into subtasks, create them on the board, and track them to completion.
             </p>
             <button
               onClick={handleSubmit}
-              disabled={!title.trim() || isCreating}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white transition-colors hover:bg-indigo-500 disabled:opacity-30"
+              disabled={!goal.trim() || isCreating}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white transition-colors hover:bg-indigo-500 disabled:opacity-30"
             >
               {isCreating ? (
-                <Loader2 size={16} className="animate-spin" />
+                <Loader2 size={18} className="animate-spin" />
               ) : (
-                <ArrowUp size={16} />
+                <ArrowUp size={18} />
               )}
             </button>
           </div>

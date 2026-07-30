@@ -23,6 +23,7 @@ import {
 } from '../live-chat.js';
 import { taskRunSettings, parseRunSettingsBody } from '../agent-settings.js';
 import { TASK_AGENT_SYSTEM_PROMPT } from '../prompts/task-agent.js';
+import { ORCHESTRATOR_PROMPT } from '../prompts/orchestrator-agent.js';
 import { isRecord, toErrorMessage } from '../errors.js';
 import { notify } from '../notifications.js';
 import type { StreamEvent } from '../adapters/types.js';
@@ -418,6 +419,28 @@ export async function releaseDependentTasks(taskId: string): Promise<void> {
       // One dependent failing to start should not block the others.
     }
   }
+}
+
+/**
+ * Start an orchestrator goal run. The system prompt (XML) is injected as a
+ * system message so the user never sees it in the visible conversation.
+ * Only the user's actual goal text appears as a message.
+ */
+export async function startOrchestratorRun(
+  task: Task,
+  userGoal: string,
+): Promise<void> {
+  const sessionId = task.id;
+
+  // Inject orchestrator prompt as system message — invisible to user
+  appendSystemMessage(task.id, ORCHESTRATOR_PROMPT);
+
+  // Start goal run with only the user's text
+  const goalState: GoalStateSnapshot = await adapter.setGoal(sessionId, userGoal);
+  const { snapshot, state } = startGoalRun(task.id, sessionId, goalState);
+  broadcast({ type: 'task_run_updated', run: state });
+  broadcastLive(task.id, { type: 'snapshot', run: snapshot });
+  void consumeGoalRun(task, sessionId, userGoal, snapshot.runId);
 }
 
 chatRouter.post('/:id/messages', async (req, res) => {

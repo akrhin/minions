@@ -171,14 +171,18 @@ tasksRouter.post('/:id/move', (req, res) => {
 
 // Orchestrate: create an orchestrator task that decomposes the goal
 tasksRouter.post('/create-orchestrator', async (req, res) => {
-  const { title, description } = req.body;
-  if (!title || typeof title !== 'string') {
-    return res.status(400).json({ error: 'title is required' });
+  const { goal } = req.body;
+  if (!goal || typeof goal !== 'string') {
+    return res.status(400).json({ error: 'goal is required' });
   }
+
+  // Derive title from first line/sentence of the goal
+  const firstLine = goal.split('\n')[0].trim().split(/[.!?]/)[0].trim();
+  const title = firstLine.length > 60 ? firstLine.slice(0, 57) + '...' : (firstLine || 'Orchestrate');
 
   const task = insertTask({
     title: `🎯 ${title.slice(0, 180)}`,
-    description: typeof description === 'string' ? description : title,
+    description: goal,
     status: 'in_progress',
   });
   broadcast({ type: 'task_created', task });
@@ -190,9 +194,9 @@ tasksRouter.post('/create-orchestrator', async (req, res) => {
   if (!tagged) return res.status(500).json({ error: 'Failed to update task tags' });
   broadcast({ type: 'task_updated', task: tagged });
 
-  // Start orchestrator goal session
-  const prompt = `${ORCHESTRATOR_PROMPT}\n\n## Goal:\n${description || title}`;
-  void startTaskRun(tagged, prompt, 'goal', { taskFields: {}, hasFields: false });
+  // Start orchestrator goal run with system prompt + user's goal
+  const { startOrchestratorRun } = await import('./chat.js');
+  void startOrchestratorRun(tagged, goal);
 
   res.status(201).json({ task: tagged });
 });
