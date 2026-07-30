@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { contextFromTask, getDependentTasks, getTask, updateTask, touchTask, recordAgentResponse } from '../db/queries.js';
+import { contextFromTask, getDependentTasks, getTask, updateTask, touchTask, recordAgentResponse, insertTask } from '../db/queries.js';
 import { adapter } from '../app.js';
 import { broadcast, initSSE } from '../events.js';
 import {
@@ -310,6 +310,14 @@ async function consumeGoalRun(runTask: Task, sessionId: string, initialContent: 
 
       const decision = await adapter.evaluateGoal(sessionId, turn.responseText);
       let shouldBroadcastSnapshot = false;
+
+      // Parse subtask block from orchestrator output
+      const subtasks = parseSubtaskBlock(turn.responseText);
+      if (subtasks) {
+        const count = createSubtaskTasks(subtasks, runTask.id);
+        appendSystemMessage(runTask.id, `✅ Created ${count} subtask card${count > 1 ? 's' : ''} on the board.`);
+        shouldBroadcastSnapshot = true;
+      }
       if (decision.state) {
         const goalRun = updateRunGoal(runTask.id, decision.state);
         if (goalRun) broadcast({ type: 'task_run_updated', run: goalRun });
@@ -441,6 +449,59 @@ export async function startOrchestratorRun(
   broadcast({ type: 'task_run_updated', run: state });
   broadcastLive(task.id, { type: 'snapshot', run: snapshot });
   void consumeGoalRun(task, sessionId, userGoal, snapshot.runId);
+}
+
+// ── Orchestrator subtask extraction ────────────────────────────────────────
+interface SubtaskDef {
+  id: string;
+  title: string;
+  description: string;
+  depends_on: string[];
+  tags?: string[];
+}
+
+const SUBTASK_RE = /---SUBTASKS\s*({[\s\S]*?})---SUBTASKS_END/;
+
+function parseSubtaskBlock(text: string): SubtaskDef[] | null {
+  const match = text.match(SUBTASK_RE);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[1]);
+    if (!Array.isArray(parsed.subtasks)) return null;
+    return parsed.subtasks as SubtaskDef[];
+  } catch {
+    return null;
+  }
+}
+
+// Map local ids (t1, t2…) to real Minions task IDs, then create tasks
+function createSubtaskTasks(subtasks: SubtaskDef[], taskId: string): number {
+  const idMap = new Map<string, string>(); // local id → real id
+  let count = 0;
+
+  for (const st of subtasks) {
+    const dependsOnReal = st.depends_on
+      .map((lid: string) => idMap.get(lid))
+      .filter(Boolean) as string[];
+
+    const created = insertTask({
+      title: st.title,
+      description: st.description,
+      status: 'in_progress',
+      depends_on_task_id: dependsOnReal.length > 0 ? dependsOnReal[0] : null,
+    });
+    broadcast({ type: 'task_created', task: created });
+    idMap.set(st.id, created.id);
+
+    // Apply tags separately (insertTask doesn't support tags)
+    const childTags = [...(st.tags ?? []), 'auto-review', `parent:${taskId}`];
+    const tagged = updateTask(created.id, { tags: childTags });
+    if (tagged) broadcast({ type: 'task_updated', task: tagged });
+
+    count++;
+  }
+
+  return count;
 }
 
 chatRouter.post('/:id/messages', async (req, res) => {
