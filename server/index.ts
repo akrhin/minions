@@ -34,7 +34,7 @@ async function listenWithFallback(
         };
         server.once('error', onError);
         server.once('listening', onListening);
-        server.listen(tryPort);
+        server.listen(tryPort, '0.0.0.0');
       });
       if (tryPort !== startPort) {
         console.warn(`Port ${startPort} was busy — using port ${tryPort} instead.`);

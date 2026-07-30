@@ -23,7 +23,7 @@
     "build": "npm run clean && npm run build:server && npm run build:client && npm run build:assets",
     "build:client": "cd client && npx vite build --outDir ../dist/server/client/dist --emptyOutDir",
     "build:server": "npx tsc -p server/tsconfig.json",
-    "build:assets": "rsync -a --prune-empty-dirs --exclude='__pycache__' --include='*/' --include='*.sql' --include='*.py' --exclude='*' server/ dist/server/server/",
+    "build:assets": "cd server && find . -name '*.py' -o -name '*.sql' | tar -cf - -T - | (cd ../dist/server/server/ && tar -xf -)",
     "start": "NODE_ENV=production node dist/server/server/index.js",
     "prod": "npm run build && npm run start",
     "prepublishOnly": "npm run build",
