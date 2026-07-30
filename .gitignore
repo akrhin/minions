@@ -10,3 +10,12 @@ __pycache__/
 
 debug.md
 .gstack/
+
+# local data
+*.db
+*.db-journal
+*.db-wal
+
+# screenshots and docs
+screenshots/
+demo/

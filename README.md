@@ -2,38 +2,28 @@
 
 **Mission Control for Hermes Agent**
 
+**Наш форк:** основан на [Adolanium/minions](https://github.com/Adolanium/minions) (35 дополнительных фич) с дополнительными доработками.
+
 Hermes Agent is powerful, but running real work on it means juggling terminal sessions, losing track of which job finished, and manually checking on long-running tasks. The more you delegate, the harder it gets to manage.
 
 Minions gives you one screen to create, supervise, and review autonomous Hermes Agent work.
-
-Hosted access option on [Agent37](https://www.agent37.com).
-
-## Screenshots
-
-![Kanban board of tasks](screenshots/tasks-board.jpg)
-
-![New task creation screen](screenshots/new-task.jpg)
 
 ## Quick Start
 
 **Prerequisites:** Node.js 18+ and [Hermes Agent](https://hermes-agent.nousresearch.com)
 
 ```bash
-npx minionsai
+git clone https://github.com/akrhin/minions.git
+cd sintez-minions
+cp .env.example .env   # настрой под себя
+npm install
+npm run build
+npm start
 ```
 
 Open [http://localhost:6969](http://localhost:6969).
 
-Local sqllite db is created on first run and state lives in `~/.minions/`
-
-Check the installed version:
-
-```bash
-minions --version
-npm view minionsai version
-```
-
-The Settings page also shows the version of the running Minions server.
+State lives in `~/.minions/` (SQLite).
 
 ## Features
 
@@ -46,6 +36,40 @@ The Settings page also shows the version of the running Minions server.
 - **Scheduled Tasks**: create and manage recurring Hermes jobs, history, and output
 - **File browser**: see files agents have created in the workspace directory
 - **Local-first option**: self-host with SQLite, no account, and no cloud dependency. Your local data stays on your machine
+- **Basic auth** (опционально): защита дашборда логином/паролем — см. раздел «Security» ниже
+
+## Additional features (from Adolanium fork)
+
+- Per-task cost display
+- Task tags, pinning, templates, export
+- Full-text search across transcripts
+- Tool call arguments, output, and diffs in chat
+- Subagent sessions view
+- Memory editor (Hermes memory files)
+- Usage and cost analytics dashboard
+- MCP server management page
+- Models management page
+- Math and Mermaid diagram rendering in chat
+- Log viewer
+- Git branch display in file browser
+- Auto-restart worker on crash
+- Agent run timeout
+- Notifications for attention-needed tasks
+- Scheduled task failure alerts with auto-retry
+- Page load optimization (compression, caching, code splitting)
+
+## Security
+
+Опциональная Basic Auth для дашборда включается через `.env`:
+
+```bash
+# .env
+MINIONS_USER=admin
+MINIONS_PASSWORD=ваш_пароль
+```
+
+Если переменные не заданы — аутентификация отключена, дашборд открыт.  
+Публичные endpoints (`/api/health`, `/api/version`, `/api/events`) работают без auth в любом случае.
 
 ## How It Works
 
