@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { getAllTasks, getTask, insertTask, updateTask, deleteTask, markTaskViewed } from '../db/queries.js';
 import { broadcast } from '../events.js';
 import { adapter } from '../app.js';
-import { releaseDependentTasks } from './chat.js';
+import { releaseDependentTasks, startTaskRun } from './chat.js';
+import { ORCHESTRATOR_PROMPT } from '../prompts/orchestrator-agent.js';
 import { ALL_TASK_STATUSES } from '../../shared/types.js';
 import type { Task, TaskStatus } from '../../shared/types.js';
 
@@ -166,4 +167,32 @@ tasksRouter.post('/:id/move', (req, res) => {
     void releaseDependentTasks(updated.id);
   }
   res.json({ task: updated });
+});
+
+// Orchestrate: create an orchestrator task that decomposes the goal
+tasksRouter.post('/create-orchestrator', async (req, res) => {
+  const { title, description } = req.body;
+  if (!title || typeof title !== 'string') {
+    return res.status(400).json({ error: 'title is required' });
+  }
+
+  const task = insertTask({
+    title: `🎯 ${title.slice(0, 180)}`,
+    description: typeof description === 'string' ? description : title,
+    status: 'in_progress',
+  });
+  broadcast({ type: 'task_created', task });
+
+  // Tag as orchestrator + auto-review
+  const tagged = updateTask(task.id, {
+    tags: [...(task.tags ?? []), 'orchestrator', 'auto-review'],
+  });
+  if (!tagged) return res.status(500).json({ error: 'Failed to update task tags' });
+  broadcast({ type: 'task_updated', task: tagged });
+
+  // Start orchestrator goal session
+  const prompt = `${ORCHESTRATOR_PROMPT}\n\n## Goal:\n${description || title}`;
+  void startTaskRun(tagged, prompt, 'goal', { taskFields: {}, hasFields: false });
+
+  res.status(201).json({ task: tagged });
 });

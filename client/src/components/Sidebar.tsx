@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { SquarePen, Columns3, Settings, PanelLeftClose, PanelLeft, Repeat, Folder, Archive, Search, BrainCircuit, BarChart3, Boxes, Plug, ScrollText } from 'lucide-react';
+import { SquarePen, Columns3, Settings, PanelLeftClose, PanelLeft, Repeat, Folder, Archive, Search, BrainCircuit, BarChart3, Boxes, Plug, ScrollText, ChartNetwork } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { isEditableTarget } from '../lib/keyboard';
 
@@ -116,6 +116,13 @@ export function Sidebar() {
             active={isActive('/tasks/new')}
             collapsed={desktopCollapsed}
             shortcut={isMac ? '⇧⌘O' : 'Ctrl+⇧+O'}
+          />
+          <SidebarButton
+            icon={<ChartNetwork size={18} />}
+            label="Orchestrate"
+            onClick={() => navigate('/tasks/orchestrate')}
+            collapsed={desktopCollapsed}
+            active={location.pathname === '/tasks/orchestrate'}
           />
           <SidebarButton
             icon={<Search size={18} />}
@@ -344,21 +351,25 @@ function SidebarButton({
   onClick,
   collapsed,
   shortcut,
+  active = false,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
   collapsed: boolean;
   shortcut?: string;
+  active?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       title={shortcut ? `${label} (${shortcut})` : label}
-      className={`group hidden min-w-0 flex-1 items-center rounded-lg px-1.5 py-1.5 text-[10px] font-medium leading-none transition-colors sm:flex sm:w-full sm:px-3 sm:py-2 sm:text-sm sm:leading-normal text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 sm:text-zinc-700 sm:dark:text-zinc-300 sm:hover:bg-surface ${
-        collapsed ? 'sm:justify-center' : 'sm:justify-start sm:gap-3'
-      }`}
+      className={`group hidden min-w-0 flex-1 items-center rounded-lg px-1.5 py-1.5 text-[10px] font-medium leading-none transition-colors sm:flex sm:w-full sm:px-3 sm:py-2 sm:text-sm sm:leading-normal ${
+        active
+          ? 'bg-zinc-100 text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100 sm:bg-surface'
+          : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 sm:text-zinc-700 sm:dark:text-zinc-300 sm:hover:bg-surface'
+      } ${collapsed ? 'sm:justify-center' : 'sm:justify-start sm:gap-3'}`}
     >
       <span className="text-zinc-500 dark:text-zinc-400">{icon}</span>
       {!collapsed && <span className="hidden truncate sm:block">{label}</span>}

@@ -5,6 +5,7 @@ import { Header, HeaderProvider } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Board } from './components/Board';
 import { NewTaskPage } from './components/NewTaskPage';
+import { OrchestratePage } from './components/OrchestratePage';
 import { TaskDetailPage } from './components/TaskDetailPage';
 import { SearchPalette } from './components/SearchPalette';
 import { Toaster } from 'sonner';
@@ -54,6 +55,7 @@ function AppShell() {
             <Routes>
               <Route path="/" element={<Board />} />
               <Route path="/tasks/new" element={<NewTaskPage />} />
+              <Route path="/tasks/orchestrate" element={<OrchestratePage />} />
               <Route path="/tasks/:taskId" element={<TaskDetailPage />} />
               <Route path="/cron" element={<Navigate to="/scheduled-tasks" replace />} />
               <Route path="/scheduled-tasks" element={<ScheduledTasksPage />} />
