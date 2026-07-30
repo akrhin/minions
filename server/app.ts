@@ -2,6 +2,7 @@ import express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import compression from 'compression';
+import { requireAuth } from './auth.js';
 import { tasksRouter } from './routes/tasks.js';
 import { templatesRouter } from './routes/templates.js';
 import { chatRouter } from './routes/chat.js';
@@ -38,6 +39,7 @@ app.use(cors());
 
 const adapter = new HermesWorkerAdapter();
 
+// Public API — no auth
 app.get('/api/health', async (_req, res) => {
   const hermes = await adapter.healthCheck();
   res.json({ ok: true, hermes });
@@ -54,10 +56,13 @@ app.get('/api/events', (req, res) => {
   sendEvent(res, { type: 'worker_status', up: getWorkerUp() });
 });
 
-app.use('/api/files', express.json({ limit: '25mb' }), filesRouter);
-app.use('/api/memory', express.json({ limit: '5mb' }), createMemoryRouter(adapter));
+// Auth gate for remaining API routes (opt-in via MINIONS_USER/MINIONS_PASSWORD)
+app.use('/api', express.json({ limit: '25mb' }), requireAuth);
 
-app.use(express.json());
+// Protected API routes
+app.use('/api/files', filesRouter);
+app.use('/api/memory', createMemoryRouter(adapter));
+app.use('/api/logs', logsRouter);
 
 app.use('/api/tasks', tasksRouter);
 app.use('/api/tasks', createTaskAgentSettingsRouter(adapter));
@@ -72,7 +77,6 @@ app.use('/api/models', createModelsRouter(adapter));
 app.use('/api/mcp', createMcpRouter(adapter));
 app.use('/api/templates', templatesRouter);
 app.use('/api/notifications', notificationsRouter);
-app.use('/api/logs', logsRouter);
 
 app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
   if (!res.headersSent && error && typeof error === 'object' && (error as { type?: string }).type === 'entity.too.large') {
